@@ -1,78 +1,142 @@
 import axios from 'axios';
-axios.defaults.headers.common['x-api-key'] =
-  '41214727-6303ae3029c738ec798387c7a';
 
-axios
-  .get(`https://pixabay.com/api`, {
-    params: {
-      key: '41214727-6303ae3029c738ec798387c7a',
-      image_type: 'photo',
-      orientation: 'horizontal',
-      safesearch: 'true',
-      q: 'cat',
-    },
-  })
-  .then(({ data }) => console.log(data));
+import Notiflix from 'notiflix';
+Notiflix.Notify.init({
+  width: '480px',
+  position: 'right-top',
+});
 
-//   headers: { 'Access-Control-Allow-Origin': '*' },
-// withCredentials: true,
+import SimpleLightbox from 'simplelightbox';
+import 'simplelightbox/dist/simple-lightbox.min.css';
 
-// axios.defaults.headers.common['x-api-key'] =
-//   '41214727-6303ae3029c738ec798387c7a';
-// axios.defaults.baseURL = 'https://pixabay.com/api/';
+let page = 1;
+let query = '';
+let per_page = 40;
 
-// axios({
-//   //   method: 'get',
-//   //   url: 'https://pixabay.com/api/',
-//   //   withCredentials: true,
-//   params: {
-//     //     // key: '41214727-6303ae3029c738ec798387c7a',
-//     //     // image_type: 'photo',
-//     //     // orientation: 'horizontal',
-//     //     // safesearch: 'true',
-//     q: 'cat',
-//   },
-//   //   headers: {
-//   //     'Access-Control-Allow-Origin': '*',
-//   //     'Content-Type': 'application/json',
-//   //     'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
-//   //   },
-// }).then(response => {
-//   console.log(response);
-//   response.data.pipe(fs.createWriteStream('ada_lovelace.jpg'));
-// });
+const photoOptions = {
+  captionsData: 'alt',
+  captionPosition: 'bottom',
+  captionDelay: 250,
+};
 
-// const postToAdd = {
-//   webformatURL: '',
-//   largeImageURL: '',
-//   tags: '',
-//   likes: '',
-//   views: '',
-//   comments: '',
-//   dowloads: '',
-// };
+function fetchPhotos() {
+  return axios
+    .get(`https://pixabay.com/api/`, {
+      params: {
+        key: '41214727-6303ae3029c738ec798387c7a',
+        image_type: 'photo',
+        orientation: 'horizontal',
+        safesearch: 'true',
+        q: query,
+        per_page: per_page,
+        page: page,
+      },
+    })
+    .then(({ data }) => data);
+}
 
-// const options = {
-//   method: 'POST',
-//   body: JSON.stringify(postToAdd),
-//   headers: {
-//     'Content-Type': 'application/json; charset=UTF-8',
-//   },
-// };
+function loadGallery() {
+  console.log(page);
+  return fetchPhotos()
+    .then(data => {
+      let photos = data.hits;
 
-// fetch('https://pixabay.com' / posts, options)
-//   .then(response => response.json())
-//   .then(post => console.log(post))
-//   .catch(error => console.log(error));
+      // console.log(page);
+      // console.log(data);
+      // console.log(photos);
 
-// // import Notiflix from 'notiflix';
-// // Notiflix.Notify.init({
-// //   width: '780px',
-// //   position: 'right-top',
-// // });
+      if (photos.length == 0) {
+        Notiflix.Notify.failure(
+          'Sorry, there are no images matching your search query. Please try again.'
+        );
+      } else {
+        if (page == 1) {
+          Notiflix.Notify.success(`Hooray! We found ${data.totalHits} images.`);
+        }
+        let photoDivs = photos.map(
+          photo =>
+            `<div class="gallery_item">
+            <a class="gallery_link" href="${photo.largeImageURL}">
+            <div class="photo-card">
+            <img class="image" src="${photo.webformatURL}" width="290px" alt="${photo.tags}" loading="lazy" />
+            <div class="info">
+              <p class="info-item">
+                <b>Likes </br>
+                ${photo.likes}</b>
+              </p>
+              <p class="info-item">
+                <b>Views </br>
+                ${photo.views}</b>
+              </p>
+              <p class="info-item">
+                <b>Comments </br>
+                ${photo.comments}</b>
+              </p>
+              <p class="info-item">
+                <b>Downloads </br>
+                ${photo.downloads}</b>
+              </p>
+            </div>
+          </div>
+          </div>
+          </a>
+          </div>`
+        );
+        photoCards.innerHTML += photoDivs.join('');
+        const lightbox = new SimpleLightbox(
+          '.gallery .gallery_link',
+          photoOptions
+        );
+        lightbox.refresh();
+        scrollPhotos();
+        loadMore.classList.remove('hidden');
+      }
 
-// // import SimpleLightbox from 'simplelightbox';
-// // const lightbox = new SimpleLightbox('ul.gallery a', {
-// //   captionsData: 'alt',
-// //   captionDelay: 250,
-// // });
+      let lastPage = Math.ceil(data.totalHits / per_page);
+      if (page == lastPage) {
+        loadMore.classList.add('hidden');
+        Notiflix.Notify.failure(
+          'We are sorry, but you have reached the end of search results.'
+        );
+      }
+    })
+    .catch(error => {
+      console.log(error);
+    });
+}
+
+const photoSearch = document.querySelector('#search-form button[type=submit]');
+const photoCards = document.querySelector('div.gallery');
+const loadMore = document.querySelector('button.load-more[type=button]');
+
+photoSearch.addEventListener('click', ev => {
+  ev.preventDefault();
+
+  let searchInputValue = document.querySelector(
+    '#search-form input[name=searchQuery]'
+  ).value;
+
+  if (query != searchInputValue) {
+    query = searchInputValue;
+    page = 1;
+    // czyszczenie
+    photoCards.innerHTML = '';
+    loadMore.classList.add('hidden');
+  }
+  loadGallery();
+});
+
+loadMore.addEventListener('click', ev => {
+  page++;
+  loadGallery();
+});
+
+function scrollPhotos() {
+  const { height: cardHeight } = document
+    .querySelector(`.gallery`)
+    .firstElementChild.getBoundingClientRect();
+  window.scrollBy({
+    top: cardHeight * 2,
+    behavior: 'smooth',
+  });
+}
