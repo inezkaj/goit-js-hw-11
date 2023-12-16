@@ -19,8 +19,8 @@ const photoOptions = {
   captionDelay: 250,
 };
 
-function fetchPhotos() {
-  return axios
+async function fetchPhotos() {
+  return await axios
     .get(`https://pixabay.com/api/`, {
       params: {
         key: '41214727-6303ae3029c738ec798387c7a',
@@ -35,9 +35,9 @@ function fetchPhotos() {
     .then(({ data }) => data);
 }
 
-function loadGallery() {
+async function loadGallery() {
   console.log(page);
-  return fetchPhotos()
+  return await fetchPhotos()
     .then(data => {
       let photos = data.hits;
 
